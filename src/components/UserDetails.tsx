@@ -5,8 +5,14 @@ import UserForm from './UserForm';
 
 const UserDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { users } = useContext(UserContext);
-  const user = users.find((user) => user.id === parseInt(id));
+  const userContext = useContext(UserContext);
+
+  if (!userContext) {
+    return <p>User context not found</p>;
+  }
+
+  const { users } = userContext;
+  const user = users.find((user) => user.id === parseInt(id || '', 10));
 
   return (
     <div>

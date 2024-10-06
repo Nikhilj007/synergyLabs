@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import axios from 'axios';
 
 interface User {
@@ -17,12 +17,12 @@ interface User {
   website: string;
 }
 
-interface UserContextType {
+export interface UserContextType {
   users: User[];
   loading: boolean;
   error: string | null;
-  createUser: (user: User) => Promise<void>;
-  updateUser: (id: number, updatedUser: User) => Promise<void>;
+  createUser: (user: Omit<User, 'id'>) => Promise<void>;
+  updateUser: (id: number, updatedUser: Partial<User>) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
 }
 
@@ -48,7 +48,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchUsers();
   }, []);
 
-  const createUser = async (user: User) => {
+  const createUser = async (user: Omit<User, 'id'>) => {
     try {
       const response = await axios.post<User>('https://jsonplaceholder.typicode.com/users', user);
       setUsers((prevUsers) => [...prevUsers, response.data]);
@@ -57,11 +57,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const updateUser = async (id: number, updatedUser: User) => {
+  const updateUser = async (id: number, updatedUser: Partial<User>) => {
     try {
-      await axios.put(`https://jsonplaceholder.typicode.com/users/${id}`, updatedUser);
+      const response = await axios.put<User>(`https://jsonplaceholder.typicode.com/users/${id}`, updatedUser);
       setUsers((prevUsers) =>
-        prevUsers.map((user) => (user.id === id ? { ...user, ...updatedUser } : user))
+        prevUsers.map((user) => (user.id === id ? { ...user, ...response.data } : user))
       );
     } catch (error) {
       setError('Error updating user');
@@ -77,9 +77,27 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const contextValue: UserContextType = {
+    users,
+    loading,
+    error,
+    createUser,
+    updateUser,
+    deleteUser
+  };
+
   return (
-    <UserContext.Provider value={{users, loading, error, createUser, updateUser, deleteUser }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );
+};
+
+// Custom hook for using the UserContext
+export const useUserContext = (): UserContextType => {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUserContext must be used within a UserProvider');
+  }
+  return context;
 };
